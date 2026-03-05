@@ -236,7 +236,7 @@ The long-term goal is to evolve ICT Field Ops into a **complete mobile toolkit f
 # 📬 Contact
 
 <p align="center">
-  <a href="https://facebook.com/Vince Carlo Noora">
+  <a href="[https://facebook.com/Vince Carlo Noora](https://www.facebook.com/vince.noora.50/)">
     <img src="https://img.shields.io/badge/Facebook-%231877F2.svg?logo=Facebook&logoColor=white">
   </a>
 
