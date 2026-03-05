@@ -1,5 +1,8 @@
 package com.example.ictapp
 
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+
 data class TroubleshootingEntry(
     val id: Int = 0,
     val title: String,
@@ -12,8 +15,9 @@ data class TroubleshootingEntry(
     val notes: String
 )
 
+@Entity(tableName = "repair_logs")
 data class RepairLog(
-    val id: Int = 0,
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val date: Long,
     val technicianName: String = "V1NC3",
     val location: String,
@@ -38,8 +42,9 @@ data class SavedIp(
     val notes: String
 )
 
+@Entity(tableName = "deployment_tasks")
 data class DeploymentTask(
-    val id: Int = 0,
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val unitName: String,
     val serialNumber: String = "",
     val assetTag: String = "",

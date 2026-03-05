@@ -11,6 +11,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -24,6 +25,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -38,6 +40,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.BufferedReader
 import java.io.InputStreamReader
+import java.net.InetAddress
+import kotlin.math.pow
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -242,18 +246,121 @@ fun ResultItem(label: String, value: String, icon: ImageVector) {
 
 @Composable
 fun IpCalcSection() {
-    var ip by remember { mutableStateOf("192.168.1.1") }
-    Column(Modifier.padding(vertical = 8.dp)) {
-        FieldInput(ip, { ip = it }, "Enter Host IP")
-        Spacer(Modifier.height(20.dp))
-        GlassCard {
-            val prefix = if (ip.contains(".")) ip.substringBeforeLast(".") else "192.168.1"
-            DetailRow("Gateway", "$prefix.1")
-            DetailRow("Broadcast", "$prefix.255")
-            DetailRow("Subnet", "255.255.255.0 (/24)")
-            DetailRow("Network Class", if (ip.startsWith("192")) "Class C" else "Dynamic")
+    var ipInput by remember { mutableStateOf("192.168.1.1") }
+    var maskInput by remember { mutableStateOf("24") }
+    
+    // Result State
+    var networkAddress by remember { mutableStateOf("-") }
+    var broadcastAddress by remember { mutableStateOf("-") }
+    var usableRange by remember { mutableStateOf("-") }
+    var totalHosts by remember { mutableStateOf("-") }
+    var netmask by remember { mutableStateOf("-") }
+
+    fun calculate() {
+        try {
+            val parts = ipInput.split(".")
+            if (parts.size != 4) return
+            
+            val ipInt = parts.map { it.toInt() }.fold(0) { acc, i -> (acc shl 8) + i }
+            val mask = maskInput.toInt()
+            if (mask !in 0..32) return
+
+            val maskInt = if (mask == 0) 0 else (-1 shl (32 - mask))
+            val netInt = ipInt and maskInt
+            val broadcastInt = netInt or maskInt.inv()
+
+            networkAddress = intToIp(netInt)
+            broadcastAddress = intToIp(broadcastInt)
+            netmask = intToIp(maskInt)
+            
+            if (mask <= 30) {
+                usableRange = "${intToIp(netInt + 1)} - ${intToIp(broadcastInt - 1)}"
+                totalHosts = "${2.0.pow(32 - mask).toInt() - 2}"
+            } else {
+                usableRange = "N/A"
+                totalHosts = if (mask == 32) "1" else "2"
+            }
+        } catch (e: Exception) {
+            // Ignore invalid input
         }
     }
+
+    // Auto-calculate on start
+    LaunchedEffect(Unit) { calculate() }
+
+    Column(Modifier.padding(vertical = 8.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Box(Modifier.weight(3f)) {
+                OutlinedTextField(
+                    value = ipInput,
+                    onValueChange = { ipInput = it },
+                    label = { Text("Host IP", color = Color.White.copy(0.6f)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Color.Cyan, unfocusedBorderColor = Color.White, focusedTextColor = Color.White, unfocusedTextColor = Color.White),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                )
+            }
+            Box(Modifier.weight(1f)) {
+                OutlinedTextField(
+                    value = maskInput,
+                    onValueChange = { maskInput = it },
+                    label = { Text("CIDR", color = Color.White.copy(0.6f)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Color.Cyan, unfocusedBorderColor = Color.White, focusedTextColor = Color.White, unfocusedTextColor = Color.White),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                )
+            }
+        }
+        
+        Spacer(Modifier.height(16.dp))
+        
+        Button(
+            onClick = { calculate() },
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = Color.Cyan, contentColor = Color.Black),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Icon(Icons.Default.Calculate, null)
+            Spacer(Modifier.width(8.dp))
+            Text("CALCULATE SUBNET", fontWeight = FontWeight.Bold)
+        }
+
+        Spacer(Modifier.height(24.dp))
+        
+        Text("CALCULATION RESULTS", color = Color.Cyan, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+        Spacer(Modifier.height(12.dp))
+        
+        GlassCard {
+            DetailRow("Network Address", networkAddress)
+            DetailRow("Broadcast Address", broadcastAddress)
+            DetailRow("Subnet Mask", netmask)
+            DetailRow("Usable Host Range", usableRange)
+            DetailRow("Total Usable Hosts", totalHosts)
+        }
+        
+        Spacer(Modifier.height(16.dp))
+        
+        Surface(
+            color = Color.Cyan.copy(0.1f),
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Info, null, tint = Color.Cyan, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    "CIDR /24 is standard for most home and small office networks (255.255.255.0).",
+                    color = Color.White.copy(0.8f),
+                    fontSize = 11.sp,
+                    lineHeight = 16.sp
+                )
+            }
+        }
+    }
+}
+
+fun intToIp(ip: Int): String {
+    return "${(ip shr 24) and 0xFF}.${(ip shr 16) and 0xFF}.${(ip shr 8) and 0xFF}.${ip and 0xFF}"
 }
 
 @Composable

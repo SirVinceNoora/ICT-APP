@@ -31,7 +31,12 @@ import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DeploymentScreen(tasks: MutableList<DeploymentTask>, onBack: () -> Unit = {}) {
+fun DeploymentScreen(
+    tasks: List<DeploymentTask>, 
+    onBack: () -> Unit = {},
+    onSaveTask: (DeploymentTask) -> Unit = {},
+    onUpdateTask: (DeploymentTask) -> Unit = {}
+) {
     var selectedTaskForEdit by remember { mutableStateOf<DeploymentTask?>(null) }
 
     Scaffold(
@@ -57,13 +62,16 @@ fun DeploymentScreen(tasks: MutableList<DeploymentTask>, onBack: () -> Unit = {}
         ) {
             item { Spacer(Modifier.height(8.dp)) }
             items(tasks) { task ->
-                DeploymentCard(task, onEditClick = { selectedTaskForEdit = task })
+                DeploymentCard(
+                    task = task, 
+                    onEditClick = { selectedTaskForEdit = task },
+                    onTaskUpdate = onUpdateTask
+                )
             }
             item {
                 Button(
                     onClick = { 
-                        tasks.add(DeploymentTask(
-                            id = (tasks.maxOfOrNull { it.id } ?: 0) + 1,
+                        onSaveTask(DeploymentTask(
                             unitName = "WORKSTATION-${tasks.size + 1}", 
                             date = System.currentTimeMillis(),
                             status = "In Progress"
@@ -84,10 +92,7 @@ fun DeploymentScreen(tasks: MutableList<DeploymentTask>, onBack: () -> Unit = {}
                 task = selectedTaskForEdit!!,
                 onDismiss = { selectedTaskForEdit = null },
                 onSave = { updatedTask ->
-                    val index = tasks.indexOfFirst { it.id == updatedTask.id }
-                    if (index != -1) {
-                        tasks[index] = updatedTask
-                    }
+                    onUpdateTask(updatedTask)
                     selectedTaskForEdit = null
                 }
             )
@@ -96,7 +101,7 @@ fun DeploymentScreen(tasks: MutableList<DeploymentTask>, onBack: () -> Unit = {}
 }
 
 @Composable
-fun DeploymentCard(task: DeploymentTask, onEditClick: () -> Unit) {
+fun DeploymentCard(task: DeploymentTask, onEditClick: () -> Unit, onTaskUpdate: (DeploymentTask) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
     
@@ -142,12 +147,12 @@ fun DeploymentCard(task: DeploymentTask, onEditClick: () -> Unit) {
                 Text("PROVISIONING CHECKLIST", color = Color.Cyan, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                 Spacer(Modifier.height(8.dp))
                 
-                CheckRow("Windows Activated", task.isWindowsActivated) { task.isWindowsActivated = it }
-                CheckRow("Drivers Installed", task.isDriversInstalled) { task.isDriversInstalled = it }
-                CheckRow("Office Suite", task.isOfficeInstalled) { task.isOfficeInstalled = it }
-                CheckRow("Security (Antivirus)", task.isAntivirusInstalled) { task.isAntivirusInstalled = it }
-                CheckRow("Network/Domain Join", task.isNetworkJoined) { task.isNetworkJoined = it }
-                CheckRow("Backup Configured", task.isBackupConfigured) { task.isBackupConfigured = it }
+                CheckRow("Windows Activated", task.isWindowsActivated) { onTaskUpdate(task.copy(isWindowsActivated = it)) }
+                CheckRow("Drivers Installed", task.isDriversInstalled) { onTaskUpdate(task.copy(isDriversInstalled = it)) }
+                CheckRow("Office Suite", task.isOfficeInstalled) { onTaskUpdate(task.copy(isOfficeInstalled = it)) }
+                CheckRow("Security (Antivirus)", task.isAntivirusInstalled) { onTaskUpdate(task.copy(isAntivirusInstalled = it)) }
+                CheckRow("Network/Domain Join", task.isNetworkJoined) { onTaskUpdate(task.copy(isNetworkJoined = it)) }
+                CheckRow("Backup Configured", task.isBackupConfigured) { onTaskUpdate(task.copy(isBackupConfigured = it)) }
                 
                 if (task.notes.isNotEmpty()) {
                     Spacer(Modifier.height(12.dp))
@@ -210,25 +215,9 @@ fun EditDeploymentDialog(task: DeploymentTask, onDismiss: () -> Unit, onSave: (D
 @Preview(showBackground = true)
 @Composable
 fun DeploymentScreenPreview() {
-    val sampleTasks = remember {
-        mutableListOf(
-            DeploymentTask(
-                unitName = "WS-CORP-001",
-                assetTag = "IT-2024-001",
-                serialNumber = "DELL-XPS-9310",
-                location = "HQ - Floor 2",
-                assignedTo = "John Doe",
-                date = System.currentTimeMillis(),
-                isWindowsActivated = true,
-                isDriversInstalled = true,
-                isNetworkJoined = true,
-                status = "Completed"
-            )
-        )
-    }
     ICTAPPTheme {
         Box(Modifier.background(Color(0xFF001F54))) {
-            DeploymentScreen(tasks = sampleTasks)
+            DeploymentScreen(tasks = emptyList())
         }
     }
 }

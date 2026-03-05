@@ -35,7 +35,12 @@ import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RepairLogScreen(logs: MutableList<RepairLog>, onBack: () -> Unit = {}) {
+fun RepairLogScreen(
+    logs: List<RepairLog>, 
+    onBack: () -> Unit = {},
+    onSaveLog: (RepairLog) -> Unit = {},
+    onUpdateLog: (RepairLog) -> Unit = {}
+) {
     var showAddDialog by remember { mutableStateOf(false) }
     var selectedLogForEdit by remember { mutableStateOf<RepairLog?>(null) }
 
@@ -77,7 +82,6 @@ fun RepairLogScreen(logs: MutableList<RepairLog>, onBack: () -> Unit = {}) {
             }
         }
 
-        // Blurry overlay when dialog is shown
         if (showAddDialog || selectedLogForEdit != null) {
             Box(
                 modifier = Modifier
@@ -91,7 +95,7 @@ fun RepairLogScreen(logs: MutableList<RepairLog>, onBack: () -> Unit = {}) {
             RepairEntryDialog(
                 onDismiss = { showAddDialog = false },
                 onSave = { newLog ->
-                    logs.add(newLog)
+                    onSaveLog(newLog)
                     showAddDialog = false
                 }
             )
@@ -102,14 +106,7 @@ fun RepairLogScreen(logs: MutableList<RepairLog>, onBack: () -> Unit = {}) {
                 log = selectedLogForEdit,
                 onDismiss = { selectedLogForEdit = null },
                 onSave = { updatedLog ->
-                    val index = logs.indexOfFirst { it.id == updatedLog.id }
-                    if (index != -1) {
-                        logs[index] = updatedLog
-                    } else {
-                        // Fallback for current session reference
-                        val refIndex = logs.indexOf(selectedLogForEdit)
-                        if (refIndex != -1) logs[refIndex] = updatedLog
-                    }
+                    onUpdateLog(updatedLog)
                     selectedLogForEdit = null
                 }
             )
@@ -195,7 +192,6 @@ fun RepairEntryDialog(
                                 actionTaken = actionTaken,
                                 status = status
                             ) ?: RepairLog(
-                                id = Random().nextInt(),
                                 date = System.currentTimeMillis(),
                                 location = "On-site",
                                 deviceType = deviceType,
@@ -261,25 +257,9 @@ fun RepairLogCard(log: RepairLog, onEdit: () -> Unit) {
 @Preview(showBackground = true)
 @Composable
 fun RepairLogScreenPreview() {
-    val sampleLogs = remember {
-        mutableStateListOf(
-            RepairLog(
-                date = System.currentTimeMillis(),
-                location = "Office A",
-                deviceType = "Laptop",
-                brand = "Dell",
-                issue = "No Power",
-                diagnosis = "Testing...",
-                actionTaken = "None",
-                partsUsed = "None",
-                timeSpentMinutes = 10,
-                status = "In Progress"
-            )
-        )
-    }
     ICTAPPTheme {
         Box(Modifier.background(Color(0xFF001F54))) {
-            RepairLogScreen(logs = sampleLogs)
+            RepairLogScreen(logs = emptyList())
         }
     }
 }
