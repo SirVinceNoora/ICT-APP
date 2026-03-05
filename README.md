@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img src="assets/app-preview.gif" alt="ICT Field Ops Preview" width="100%">
+  <img src="assets/app-preview.gif" alt="ICT Field Ops Preview" width="40%">
 </p>
 
 <div align="center" style="
