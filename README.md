@@ -244,7 +244,9 @@ The long-term goal is to evolve ICT Field Ops into a **complete mobile toolkit f
     <img src="https://img.shields.io/badge/LinkedIn-%230077B5.svg?logo=linkedin&logoColor=white">
   </a>
 </p>
-
+<p align="center">
+  <img src="assets/qr.png" alt="ICT Field Ops Banner" width="100%" />
+</p>
 ---
 
 <p align="center">
