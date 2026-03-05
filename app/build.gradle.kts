@@ -46,7 +46,10 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.navigation.compose)
-    
+    implementation(libs.androidx.ui)
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.google.accompanist:accompanist-permissions:0.32.0")
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
