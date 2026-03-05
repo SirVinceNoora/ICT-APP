@@ -15,14 +15,20 @@ data class TroubleshootingEntry(
 data class RepairLog(
     val id: Int = 0,
     val date: Long,
+    val technicianName: String = "V1NC3",
     val location: String,
     val deviceType: String,
     val brand: String,
+    val modelNumber: String = "Generic",
+    val serialNumber: String = "",
     val issue: String,
+    val diagnosis: String = "",
     val actionTaken: String,
     val partsUsed: String,
+    val costOfParts: Double = 0.0,
     val timeSpentMinutes: Int,
-    val status: String
+    val status: String,
+    val customerSignature: String = ""
 )
 
 data class SavedIp(
@@ -35,14 +41,21 @@ data class SavedIp(
 data class DeploymentTask(
     val id: Int = 0,
     val unitName: String,
+    val serialNumber: String = "",
+    val assetTag: String = "",
     val date: Long,
+    val location: String = "",
+    val assignedTo: String = "",
     var isWindowsActivated: Boolean = false,
     var isOfficeInstalled: Boolean = false,
     var isDriversInstalled: Boolean = false,
-    val isAntivirusInstalled: Boolean = false,
+    var isAntivirusInstalled: Boolean = false,
     var isNetworkJoined: Boolean = false,
-    val isPrinterInstalled: Boolean = false,
-    val isUpdatesDone: Boolean = false,
-    val isUserCreated: Boolean = false,
-    val notes: String = ""
+    var isPrinterInstalled: Boolean = false,
+    var isUpdatesDone: Boolean = false,
+    var isUserCreated: Boolean = false,
+    var isBackupConfigured: Boolean = false,
+    var isEncryptionEnabled: Boolean = false,
+    val notes: String = "",
+    val status: String = "Pending"
 )

@@ -12,6 +12,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
@@ -38,10 +39,11 @@ import kotlinx.coroutines.withContext
 import java.io.BufferedReader
 import java.io.InputStreamReader
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NetworkToolsScreen() {
+fun NetworkToolsScreen(initialTab: Int = 0, onBack: () -> Unit = {}) {
     val context = LocalContext.current
-    var selectedTab by remember { mutableStateOf(0) }
+    var selectedTab by remember { mutableStateOf(initialTab) }
     val tabs = listOf("Speed Test", "IP Calc", "Tools", "Wi-Fi")
     var currentWifiSsid by remember { mutableStateOf("Not Connected") }
 
@@ -65,63 +67,76 @@ fun NetworkToolsScreen() {
         onDispose { connectivityManager.unregisterNetworkCallback(networkCallback) }
     }
 
-    Box(Modifier.fillMaxSize().statusBarsPadding()) {
-        Column(Modifier.padding(16.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                TabRow(
-                    selectedTabIndex = selectedTab,
-                    containerColor = Color.Transparent,
-                    contentColor = Color.Cyan,
-                    modifier = Modifier.weight(1f).padding(end = 80.dp),
-                    divider = {},
-                    indicator = { tabPositions ->
-                        if (selectedTab < tabPositions.size) {
-                            TabRowDefaults.SecondaryIndicator(
-                                modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
-                                color = Color.Cyan
-                            )
+    Scaffold(
+        containerColor = Color.Transparent,
+        topBar = {
+            TopAppBar(
+                title = { Text("Network Tools", fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                    }
+                },
+                actions = {
+                    Surface(
+                        modifier = Modifier.padding(end = 8.dp),
+                        color = Color.Transparent
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(if (currentWifiSsid == "Not Connected") Color.Red.copy(0.2f) else Color.Cyan.copy(alpha = 0.2f))
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(Modifier.size(5.dp).clip(RoundedCornerShape(2.5.dp)).background(if (currentWifiSsid == "Not Connected") Color.Red else Color.Cyan))
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    text = currentWifiSsid.uppercase(),
+                                    color = if (currentWifiSsid == "Not Connected") Color.Red.copy(0.9f) else Color.Cyan,
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Black,
+                                    letterSpacing = 0.5.sp
+                                )
+                            }
                         }
                     }
-                ) {
-                    tabs.forEachIndexed { index, title ->
-                        Tab(
-                            selected = selectedTab == index,
-                            onClick = { selectedTab = index },
-                            text = { Text(title, fontSize = 11.sp, fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal) }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, titleContentColor = Color.White)
+            )
+        }
+    ) { padding ->
+        Column(Modifier.padding(padding).padding(16.dp)) {
+            TabRow(
+                selectedTabIndex = selectedTab,
+                containerColor = Color.Transparent,
+                contentColor = Color.Cyan,
+                divider = {},
+                indicator = { tabPositions ->
+                    if (selectedTab < tabPositions.size) {
+                        TabRowDefaults.SecondaryIndicator(
+                            modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
+                            color = Color.Cyan
                         )
                     }
                 }
+            ) {
+                tabs.forEachIndexed { index, title ->
+                    Tab(
+                        selected = selectedTab == index,
+                        onClick = { selectedTab = index },
+                        text = { Text(title, fontSize = 11.sp, fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal) }
+                    )
+                }
             }
+            
             Spacer(Modifier.height(24.dp))
+
             when (selectedTab) {
                 0 -> SpeedTestSection()
                 1 -> IpCalcSection()
                 2 -> NetworkToolsList()
                 3 -> WifiScreen()
-            }
-        }
-
-        Surface(
-            modifier = Modifier.align(Alignment.TopEnd).padding(top = 8.dp, end = 8.dp),
-            color = Color.Transparent
-        ) {
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(bottomStart = 12.dp, topEnd = 4.dp))
-                    .background(if (currentWifiSsid == "Not Connected") Color.Red.copy(0.2f) else Color.Cyan.copy(alpha = 0.2f))
-                    .padding(horizontal = 10.dp, vertical = 5.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(5.dp).clip(RoundedCornerShape(2.5.dp)).background(if (currentWifiSsid == "Not Connected") Color.Red else Color.Cyan))
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        text = currentWifiSsid.uppercase(),
-                        color = if (currentWifiSsid == "Not Connected") Color.Red.copy(0.9f) else Color.Cyan,
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 0.5.sp
-                    )
-                }
             }
         }
     }
@@ -140,7 +155,7 @@ fun SpeedTestSection() {
     )
 
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-        GlassCard(modifier = Modifier.padding(16.dp)) {
+        GlassCard(modifier = Modifier.padding(vertical = 16.dp)) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                 Box(Modifier.size(220.dp), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(
@@ -228,7 +243,7 @@ fun ResultItem(label: String, value: String, icon: ImageVector) {
 @Composable
 fun IpCalcSection() {
     var ip by remember { mutableStateOf("192.168.1.1") }
-    Column(Modifier.padding(8.dp)) {
+    Column(Modifier.padding(vertical = 8.dp)) {
         FieldInput(ip, { ip = it }, "Enter Host IP")
         Spacer(Modifier.height(20.dp))
         GlassCard {
@@ -320,6 +335,12 @@ fun getGatewayIp(context: Context): String? {
     } else null
 }
 
-@Preview
+@Preview(showBackground = true)
 @Composable
-fun NetworkToolsScreenPreview() { ICTAPPTheme { NetworkToolsScreen() } }
+fun NetworkToolsScreenPreview() { 
+    ICTAPPTheme { 
+        Box(Modifier.background(Color(0xFF001F54))) {
+            NetworkToolsScreen() 
+        }
+    } 
+}

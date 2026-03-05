@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -19,9 +20,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ictapp.ui.components.GlassCard
+import com.example.ictapp.ui.theme.ICTAPPTheme
 
 data class KBItem(
     val title: String,
@@ -34,7 +37,7 @@ data class KBItem(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TroubleshootingScreen() {
+fun TroubleshootingScreen(onBack: () -> Unit = {}) {
     var searchQuery by remember { mutableStateOf("") }
     val context = LocalContext.current
 
@@ -99,74 +102,89 @@ fun TroubleshootingScreen() {
         it.category.contains(searchQuery, ignoreCase = true)
     }
 
-    Column(Modifier.padding(16.dp)) {
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = { searchQuery = it },
-            label = { Text("Search Devices, Brands, or Issues...", color = Color.White.copy(0.6f)) },
-            modifier = Modifier.fillMaxWidth(),
-            leadingIcon = { Icon(Icons.Default.Search, null, tint = Color.Cyan) },
-            trailingIcon = {
-                if (searchQuery.isNotEmpty()) {
-                    IconButton(onClick = { searchQuery = "" }) {
-                        Icon(Icons.Default.Close, null, tint = Color.White)
+    Scaffold(
+        containerColor = Color.Transparent,
+        topBar = {
+            TopAppBar(
+                title = { Text("Knowledge Base", fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
                     }
-                }
-            },
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Color.Cyan,
-                unfocusedBorderColor = Color.White.copy(0.3f),
-                focusedTextColor = Color.White,
-                unfocusedTextColor = Color.White
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, titleContentColor = Color.White)
             )
-        )
-
-        Spacer(Modifier.height(16.dp))
-
-        // AI / Google Quick Search
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(
-                onClick = { 
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/search?q=${Uri.encode(searchQuery + " troubleshooting")}"))
-                    context.startActivity(intent)
-                },
-                modifier = Modifier.weight(1f),
-                colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(0.1f)),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Icon(Icons.Default.Public, null, tint = Color.Cyan, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Google", fontSize = 12.sp)
-            }
-            Button(
-                onClick = { 
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://chatgpt.com/?q=${Uri.encode("Detailed technical troubleshooting for " + searchQuery)}"))
-                    context.startActivity(intent)
-                },
-                modifier = Modifier.weight(1f),
-                colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(0.1f)),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Icon(Icons.Default.AutoAwesome, null, tint = Color.Magenta, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Ask AI", fontSize = 12.sp)
-            }
         }
+    ) { padding ->
+        Column(Modifier.padding(padding).padding(16.dp)) {
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                label = { Text("Search Devices, Brands, or Issues...", color = Color.White.copy(0.6f)) },
+                modifier = Modifier.fillMaxWidth(),
+                leadingIcon = { Icon(Icons.Default.Search, null, tint = Color.Cyan) },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { searchQuery = "" }) {
+                            Icon(Icons.Default.Close, null, tint = Color.White)
+                        }
+                    }
+                },
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Color.Cyan,
+                    unfocusedBorderColor = Color.White.copy(0.3f),
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White
+                )
+            )
 
-        Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(16.dp))
 
-        Text("IN-DEPTH KNOWLEDGE BASE", color = Color.Cyan, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-        
-        Spacer(Modifier.height(12.dp))
-
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            items(filteredKb) { item ->
-                DetailedKBArticleCard(item)
+            // AI / Google Quick Search
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = { 
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/search?q=${Uri.encode(searchQuery + " troubleshooting")}"))
+                        context.startActivity(intent)
+                    },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(0.1f)),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Icon(Icons.Default.Public, null, tint = Color.Cyan, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Google", fontSize = 12.sp)
+                }
+                Button(
+                    onClick = { 
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://chatgpt.com/?q=${Uri.encode("Detailed technical troubleshooting for " + searchQuery)}"))
+                        context.startActivity(intent)
+                    },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(0.1f)),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Icon(Icons.Default.AutoAwesome, null, tint = Color.Magenta, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Ask AI", fontSize = 12.sp)
+                }
             }
-            if (filteredKb.isEmpty()) {
-                item {
-                    Box(Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) {
-                        Text("No internal articles found. Use AI for custom help.", color = Color.White.copy(0.5f))
+
+            Spacer(Modifier.height(20.dp))
+
+            Text("IN-DEPTH KNOWLEDGE BASE", color = Color.Cyan, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+            
+            Spacer(Modifier.height(12.dp))
+
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                items(filteredKb) { item ->
+                    DetailedKBArticleCard(item)
+                }
+                if (filteredKb.isEmpty()) {
+                    item {
+                        Box(Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) {
+                            Text("No internal articles found. Use AI for custom help.", color = Color.White.copy(0.5f))
+                        }
                     }
                 }
             }
@@ -225,6 +243,16 @@ fun DetailedKBArticleCard(item: KBItem) {
                     Text("Watch Video Tutorial", fontWeight = FontWeight.Bold)
                 }
             }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun TroubleshootingScreenPreview() {
+    ICTAPPTheme {
+        Box(Modifier.background(Color(0xFF001F54))) {
+            TroubleshootingScreen()
         }
     }
 }
