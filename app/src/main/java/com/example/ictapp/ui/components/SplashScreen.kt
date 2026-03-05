@@ -21,11 +21,13 @@ import kotlinx.coroutines.delay
 @Composable
 fun ByteForgeSplashScreen(onAnimationFinished: () -> Unit) {
     var startAnimation by remember { mutableStateOf(false) }
+    
     val alphaAnim = animateFloatAsState(
         targetValue = if (startAnimation) 1f else 0f,
         animationSpec = tween(durationMillis = 1000),
         label = "alpha"
     )
+    
     val scaleAnim = animateFloatAsState(
         targetValue = if (startAnimation) 1f else 0.8f,
         animationSpec = spring(
@@ -35,9 +37,19 @@ fun ByteForgeSplashScreen(onAnimationFinished: () -> Unit) {
         label = "scale"
     )
 
+    // Secondary animation for the "Forged by" text
+    var showSignature by remember { mutableStateOf(false) }
+    val signatureAlpha = animateFloatAsState(
+        targetValue = if (showSignature) 0.6f else 0f,
+        animationSpec = tween(durationMillis = 1200, delayMillis = 500),
+        label = "signatureAlpha"
+    )
+
     LaunchedEffect(key1 = true) {
         startAnimation = true
-        delay(2500) // Display for 2.5 seconds
+        delay(300)
+        showSignature = true
+        delay(2500) // Display for 2.8 seconds total
         onAnimationFinished()
     }
 
@@ -48,15 +60,28 @@ fun ByteForgeSplashScreen(onAnimationFinished: () -> Unit) {
         contentAlignment = Alignment.Center
     ) {
         Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier
-                .alpha(alphaAnim.value)
-                .scale(scaleAnim.value)
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Image(
                 painter = painterResource(id = R.drawable.byteforge),
                 contentDescription = "ByteForge Logo",
-                modifier = Modifier.size(280.dp)
+                modifier = Modifier
+                    .size(280.dp)
+                    .alpha(alphaAnim.value)
+                    .scale(scaleAnim.value)
+            )
+            
+            Spacer(Modifier.height(24.dp))
+            
+            Text(
+                text = "FORGED BY V1NC3",
+                color = Color.Cyan,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 4.sp,
+                modifier = Modifier
+                    .alpha(signatureAlpha.value)
+                    .offset(y = (20 * (1f - signatureAlpha.value)).dp) // Subtle slide up
             )
         }
     }

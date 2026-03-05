@@ -2,6 +2,7 @@ package com.example.ictapp.ui.screens
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -39,6 +40,7 @@ data class KBItem(
 @Composable
 fun TroubleshootingScreen(onBack: () -> Unit = {}) {
     var searchQuery by remember { mutableStateOf("") }
+    var selectedSortBy by remember { mutableStateOf("Brand") } // "Brand" or "Device"
     val context = LocalContext.current
 
     val kbData = remember {
@@ -100,6 +102,9 @@ fun TroubleshootingScreen(onBack: () -> Unit = {}) {
         it.title.contains(searchQuery, ignoreCase = true) ||
         it.brand.contains(searchQuery, ignoreCase = true) ||
         it.category.contains(searchQuery, ignoreCase = true)
+    }.let { list ->
+        if (selectedSortBy == "Brand") list.sortedBy { it.brand }
+        else list.sortedBy { it.category }
     }
 
     Scaffold(
@@ -116,20 +121,13 @@ fun TroubleshootingScreen(onBack: () -> Unit = {}) {
             )
         }
     ) { padding ->
-        Column(Modifier.padding(padding).padding(16.dp)) {
+        Column(Modifier.padding(padding).padding(horizontal = 16.dp)) {
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
                 label = { Text("Search Devices, Brands, or Issues...", color = Color.White.copy(0.6f)) },
                 modifier = Modifier.fillMaxWidth(),
                 leadingIcon = { Icon(Icons.Default.Search, null, tint = Color.Cyan) },
-                trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { searchQuery = "" }) {
-                            Icon(Icons.Default.Close, null, tint = Color.White)
-                        }
-                    }
-                },
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = Color.Cyan,
                     unfocusedBorderColor = Color.White.copy(0.3f),
@@ -139,6 +137,28 @@ fun TroubleshootingScreen(onBack: () -> Unit = {}) {
             )
 
             Spacer(Modifier.height(16.dp))
+
+            // Sort Selector
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("SORT BY:", color = Color.White.copy(0.5f), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                Spacer(Modifier.width(12.dp))
+                listOf("Brand", "Device").forEach { sort ->
+                    FilterChip(
+                        selected = selectedSortBy == sort,
+                        onClick = { selectedSortBy = sort },
+                        label = { Text(sort, fontSize = 10.sp) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = Color.Cyan,
+                            selectedLabelColor = Color.Black,
+                            containerColor = Color.White.copy(0.05f),
+                            labelColor = Color.White
+                        ),
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
 
             // AI / Google Quick Search
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -176,7 +196,7 @@ fun TroubleshootingScreen(onBack: () -> Unit = {}) {
             
             Spacer(Modifier.height(12.dp))
 
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxSize()) {
                 items(filteredKb) { item ->
                     DetailedKBArticleCard(item)
                 }
@@ -187,6 +207,7 @@ fun TroubleshootingScreen(onBack: () -> Unit = {}) {
                         }
                     }
                 }
+                item { Spacer(Modifier.height(80.dp)) }
             }
         }
     }
@@ -215,32 +236,47 @@ fun DetailedKBArticleCard(item: KBItem) {
                 )
             }
 
-            if (expanded) {
-                Spacer(Modifier.height(16.dp))
-                HorizontalDivider(color = Color.White.copy(0.1f))
-                Spacer(Modifier.height(12.dp))
-                
-                Text(
-                    text = item.detailFix,
-                    color = Color.White.copy(0.9f),
-                    fontSize = 13.sp,
-                    lineHeight = 20.sp
-                )
+            AnimatedVisibility(visible = expanded) {
+                Column {
+                    Spacer(Modifier.height(16.dp))
+                    HorizontalDivider(color = Color.White.copy(0.1f))
+                    Spacer(Modifier.height(12.dp))
+                    
+                    Text(
+                        text = "TECHNICAL STEPS",
+                        color = Color.Cyan.copy(0.6f),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    
+                    Text(
+                        text = item.detailFix,
+                        color = Color.White.copy(0.9f),
+                        fontSize = 13.sp,
+                        lineHeight = 20.sp
+                    )
 
-                Spacer(Modifier.height(20.dp))
-                
-                Button(
-                    onClick = {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/results?search_query=${Uri.encode(item.youtubeQuery)}"))
-                        context.startActivity(intent)
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red.copy(0.8f)),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Icon(Icons.Default.PlayCircle, null, tint = Color.White, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(12.dp))
-                    Text("Watch Video Tutorial", fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(20.dp))
+                    
+                    // Video Preview Section (Simplified placeholder with link)
+                    Surface(
+                        onClick = {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/results?search_query=${Uri.encode(item.youtubeQuery)}"))
+                            context.startActivity(intent)
+                        },
+                        color = Color.Black.copy(0.3f),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(Icons.Default.PlayCircle, null, tint = Color.Red, modifier = Modifier.size(32.dp))
+                            Spacer(Modifier.height(8.dp))
+                            Text("WATCH VIDEO TUTORIAL", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            Text("Follow these steps along with a visual guide", color = Color.White.copy(0.5f), fontSize = 10.sp)
+                        }
+                    }
                 }
             }
         }

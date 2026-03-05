@@ -16,4 +16,7 @@ interface DeploymentDao {
 
     @Delete
     suspend fun deleteTask(task: DeploymentTask)
+
+    @Query("DELETE FROM deployment_tasks WHERE status = 'Completed'")
+    suspend fun deleteAllCompleted()
 }

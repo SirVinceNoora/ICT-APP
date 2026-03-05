@@ -10,10 +10,13 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
@@ -35,17 +38,15 @@ import com.example.ictapp.ui.components.DetailRow
 import com.example.ictapp.ui.components.FieldInput
 import com.example.ictapp.ui.components.GlassCard
 import com.example.ictapp.ui.theme.ICTAPPTheme
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
 import java.io.BufferedReader
 import java.io.InputStreamReader
-import java.net.InetAddress
 import kotlin.math.pow
+import com.example.ictapp.speedtest.SettingsManager
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NetworkToolsScreen(initialTab: Int = 0, onBack: () -> Unit = {}) {
+fun NetworkToolsScreen(initialTab: Int = 0, onBack: () -> Unit = {}, settingsManager: SettingsManager? = null) {
     val context = LocalContext.current
     var selectedTab by remember { mutableStateOf(initialTab) }
     val tabs = listOf("Speed Test", "IP Calc", "Tools", "Wi-Fi")
@@ -138,7 +139,7 @@ fun NetworkToolsScreen(initialTab: Int = 0, onBack: () -> Unit = {}) {
 
             when (selectedTab) {
                 0 -> SpeedTestSection()
-                1 -> IpCalcSection()
+                1 -> IpCalcSection(settingsManager)
                 2 -> NetworkToolsList()
                 3 -> WifiScreen()
             }
@@ -245,7 +246,7 @@ fun ResultItem(label: String, value: String, icon: ImageVector) {
 }
 
 @Composable
-fun IpCalcSection() {
+fun IpCalcSection(settingsManager: SettingsManager? = null) {
     var ipInput by remember { mutableStateOf("192.168.1.1") }
     var maskInput by remember { mutableStateOf("24") }
     
@@ -256,6 +257,9 @@ fun IpCalcSection() {
     var totalHosts by remember { mutableStateOf("-") }
     var netmask by remember { mutableStateOf("-") }
 
+    var showTutorial by remember { mutableStateOf(false) }
+    val isTutorialEnabled by settingsManager?.showWelcome?.collectAsState(initial = true) ?: remember { mutableStateOf(true) }
+
     fun calculate() {
         try {
             val parts = ipInput.split(".")
@@ -265,7 +269,7 @@ fun IpCalcSection() {
             val mask = maskInput.toInt()
             if (mask !in 0..32) return
 
-            val maskInt = if (mask == 0) 0 else (-1 shl (32 - mask))
+            val maskInt = if (mask == 0) 0 else ((-1).toLong() shl (32 - mask)).toInt()
             val netInt = ipInt and maskInt
             val broadcastInt = netInt or maskInt.inv()
 
@@ -275,7 +279,7 @@ fun IpCalcSection() {
             
             if (mask <= 30) {
                 usableRange = "${intToIp(netInt + 1)} - ${intToIp(broadcastInt - 1)}"
-                totalHosts = "${2.0.pow(32 - mask).toInt() - 2}"
+                totalHosts = "${2.0.pow(32 - mask).toLong() - 2}"
             } else {
                 usableRange = "N/A"
                 totalHosts = if (mask == 32) "1" else "2"
@@ -285,8 +289,12 @@ fun IpCalcSection() {
         }
     }
 
-    // Auto-calculate on start
-    LaunchedEffect(Unit) { calculate() }
+    LaunchedEffect(Unit) { 
+        calculate() 
+        if (isTutorialEnabled) {
+            showTutorial = true
+        }
+    }
 
     Column(Modifier.padding(vertical = 8.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -337,25 +345,24 @@ fun IpCalcSection() {
             DetailRow("Usable Host Range", usableRange)
             DetailRow("Total Usable Hosts", totalHosts)
         }
-        
-        Spacer(Modifier.height(16.dp))
-        
-        Surface(
-            color = Color.Cyan.copy(0.1f),
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Info, null, tint = Color.Cyan, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(12.dp))
-                Text(
-                    "CIDR /24 is standard for most home and small office networks (255.255.255.0).",
-                    color = Color.White.copy(0.8f),
-                    fontSize = 11.sp,
-                    lineHeight = 16.sp
-                )
-            }
-        }
+    }
+
+    if (showTutorial) {
+        AlertDialog(
+            onDismissRequest = { showTutorial = false },
+            title = { Text("IP Calculator Guide") },
+            text = {
+                Text("1. Enter the Host IP address.\n2. Enter the CIDR prefix (e.g., 24 for 255.255.255.0).\n3. Tap 'CALCULATE SUBNET' to see network details like usable host range.")
+            },
+            confirmButton = {
+                TextButton(onClick = { showTutorial = false }) {
+                    Text("Got it")
+                }
+            },
+            containerColor = Color(0xFF001F54),
+            titleContentColor = Color.Cyan,
+            textContentColor = Color.White
+        )
     }
 }
 
@@ -367,55 +374,127 @@ fun intToIp(ip: Int): String {
 fun NetworkToolsList() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var pingOutput by remember { mutableStateOf("Ready to diagnose...") }
-    var isPinging by remember { mutableStateOf(false) }
+    var consoleOutput by remember { mutableStateOf("Ready to diagnose...") }
+    var isRunning by remember { mutableStateOf(false) }
+    var isContinuous by remember { mutableStateOf(false) }
+    var customTarget by remember { mutableStateOf("") }
+    var pingJob by remember { mutableStateOf<Job?>(null) }
+    val scrollState = rememberScrollState()
 
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        QuickActionRowClickable(Icons.Default.Router, "Ping Gateway (Local)", isPinging) {
-            scope.launch {
-                isPinging = true
-                pingOutput = "Locating gateway..."
-                val gateway = getGatewayIp(context)
-                if (gateway != null) {
-                    pingOutput = performPing(gateway)
-                } else {
-                    pingOutput = "Error: Gateway not found."
+    fun stopPing() {
+        pingJob?.cancel()
+        pingJob = null
+        isRunning = false
+        consoleOutput += "\n--- Terminated ---"
+    }
+
+    fun startPing(host: String) {
+        stopPing()
+        isRunning = true
+        consoleOutput = "PINGING $host...\n"
+        pingJob = scope.launch(Dispatchers.IO) {
+            try {
+                val command = if (isContinuous) "ping $host" else "ping -c 4 $host"
+                val process = Runtime.getRuntime().exec(command)
+                val reader = BufferedReader(InputStreamReader(process.inputStream))
+                var line: String? = reader.readLine()
+                while (isActive && line != null) {
+                    val currentLine = line!!
+                    withContext(Dispatchers.Main) {
+                        val currentLines = consoleOutput.split("\n")
+                        // Limit lines to last 20 for performance
+                        val updatedLines = (currentLines + currentLine).takeLast(20)
+                        consoleOutput = updatedLines.joinToString("\n")
+                        // Auto-scroll to bottom
+                        scrollState.animateScrollTo(scrollState.maxValue)
+                    }
+                    line = reader.readLine()
                 }
-                isPinging = false
+                process.destroy()
+            } catch (e: Exception) {
+                if (isActive) {
+                    withContext(Dispatchers.Main) { consoleOutput += "\nError: ${e.message}" }
+                }
+            } finally {
+                withContext(Dispatchers.Main) { isRunning = false }
             }
         }
-        QuickActionRowClickable(Icons.Default.Public, "Ping External (Google DNS)", isPinging) {
-            scope.launch {
-                isPinging = true
-                pingOutput = performPing("8.8.8.8")
-                isPinging = false
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Continuous Mode", color = Color.White.copy(0.7f), fontSize = 12.sp, modifier = Modifier.weight(1f))
+            Switch(
+                checked = isContinuous,
+                onCheckedChange = { isContinuous = it },
+                colors = SwitchDefaults.colors(checkedThumbColor = Color.Cyan)
+            )
+        }
+
+        OutlinedTextField(
+            value = customTarget,
+            onValueChange = { customTarget = it },
+            placeholder = { Text("Custom IP / Hostname", color = Color.White.copy(0.3f), fontSize = 14.sp) },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            singleLine = true,
+            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Color.Cyan, unfocusedBorderColor = Color.White.copy(0.1f), focusedTextColor = Color.White),
+            trailingIcon = {
+                IconButton(onClick = { if (customTarget.isNotEmpty()) startPing(customTarget) }) {
+                    Icon(Icons.AutoMirrored.Filled.Send, null, tint = Color.Cyan)
+                }
+            }
+        )
+
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Box(Modifier.weight(1f)) {
+                QuickActionRowClickable(Icons.Default.Router, "Local Gateway", isRunning) {
+                    if (isRunning) stopPing()
+                    else {
+                        val gateway = getGatewayIp(context)
+                        if (gateway != null) startPing(gateway)
+                        else consoleOutput = "Error: Gateway not found."
+                    }
+                }
+            }
+            Box(Modifier.weight(1f)) {
+                QuickActionRowClickable(Icons.Default.Public, "Google DNS", isRunning) {
+                    if (isRunning) stopPing()
+                    else startPing("8.8.8.8")
+                }
             }
         }
         
-        GlassCard(modifier = Modifier.fillMaxWidth().heightIn(min = 150.dp)) {
-            Text("NETWORK CONSOLE", color = Color.Cyan, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+        GlassCard(modifier = Modifier.fillMaxWidth().height(200.dp)) {
+            Text("LIVE DIAGNOSTIC CONSOLE", color = Color.Cyan, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
             Spacer(Modifier.height(8.dp))
             HorizontalDivider(color = Color.White.copy(0.1f))
             Spacer(Modifier.height(8.dp))
-            Text(pingOutput, color = Color(0xFF81D4FA), fontSize = 11.sp, lineHeight = 16.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+            Column(Modifier.fillMaxSize().verticalScroll(scrollState)) {
+                Text(
+                    text = consoleOutput, 
+                    color = Color(0xFF81D4FA), 
+                    fontSize = 11.sp, 
+                    lineHeight = 16.sp, 
+                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                )
+            }
         }
     }
 }
 
 @Composable
-fun QuickActionRowClickable(icon: ImageVector, title: String, isLoading: Boolean, onClick: () -> Unit) {
+fun QuickActionRowClickable(icon: ImageVector, title: String, isRunning: Boolean, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
-        enabled = !isLoading,
         color = Color.Transparent,
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
     ) {
-        Row(Modifier.background(Color.White.copy(0.05f)).padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, null, tint = Color.Cyan, modifier = Modifier.size(24.dp))
-            Spacer(Modifier.width(16.dp))
-            Text(title, color = Color.White, modifier = Modifier.weight(1f), fontSize = 15.sp)
-            if (isLoading) CircularProgressIndicator(modifier = Modifier.size(18.dp), color = Color.Cyan, strokeWidth = 2.dp)
-            else Text("RUN", color = Color.Cyan.copy(0.7f), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        Row(Modifier.background(Color.White.copy(0.05f)).padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, null, tint = Color.Cyan, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(title, color = Color.White, modifier = Modifier.weight(1f), fontSize = 12.sp)
+            Text(if (isRunning) "STOP" else "RUN", color = if (isRunning) Color.Red else Color.Cyan.copy(0.7f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
         }
     }
 }

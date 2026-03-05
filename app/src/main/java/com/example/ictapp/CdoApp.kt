@@ -150,7 +150,8 @@ fun CdoApp() {
                                 logs = repairLogs, 
                                 onBack = { navController.popBackStack() },
                                 onSaveLog = { scope.launch { database.repairDao().insertLog(it) } },
-                                onUpdateLog = { scope.launch { database.repairDao().updateLog(it) } }
+                                onUpdateLog = { scope.launch { database.repairDao().updateLog(it) } },
+                                onDeleteCompleted = { scope.launch { database.repairDao().deleteAllCompleted() } }
                             ) 
                         }
                         composable(route = "network?tab={tab}", arguments = listOf(navArgument("tab") { defaultValue = "0" })) { backStackEntry ->
@@ -163,7 +164,9 @@ fun CdoApp() {
                                 tasks = deploymentTasks, 
                                 onBack = { navController.popBackStack() },
                                 onSaveTask = { scope.launch { database.deploymentDao().insertTask(it) } },
-                                onUpdateTask = { scope.launch { database.deploymentDao().updateTask(it) } }
+                                onUpdateTask = { scope.launch { database.deploymentDao().updateTask(it) } },
+                                onDeleteCompleted = { scope.launch { database.deploymentDao().deleteAllCompleted() } },
+                                onPrintCompleted = { /* Implement Print Logic */ }
                             ) 
                         }
                         composable(Screen.Settings.route) { SettingsScreen(settingsManager, onBack = { navController.popBackStack() }) }

@@ -16,4 +16,7 @@ interface RepairDao {
 
     @Delete
     suspend fun deleteLog(log: RepairLog)
+
+    @Query("DELETE FROM repair_logs WHERE status = 'Completed'")
+    suspend fun deleteAllCompleted()
 }

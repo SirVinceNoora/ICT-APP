@@ -5,11 +5,15 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Business
+import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -39,10 +43,12 @@ fun RepairLogScreen(
     logs: List<RepairLog>, 
     onBack: () -> Unit = {},
     onSaveLog: (RepairLog) -> Unit = {},
-    onUpdateLog: (RepairLog) -> Unit = {}
+    onUpdateLog: (RepairLog) -> Unit = {},
+    onDeleteCompleted: () -> Unit = {}
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
     var selectedLogForEdit by remember { mutableStateOf<RepairLog?>(null) }
+    val hasCompletedLogs = logs.any { it.status == "Completed" }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
@@ -53,6 +59,13 @@ fun RepairLogScreen(
                     navigationIcon = {
                         IconButton(onClick = onBack) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        }
+                    },
+                    actions = {
+                        if (hasCompletedLogs) {
+                            IconButton(onClick = onDeleteCompleted) {
+                                Icon(Icons.Default.DeleteSweep, "Clear Completed", tint = Color.Red.copy(0.7f))
+                            }
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, titleContentColor = Color.White)
@@ -123,6 +136,7 @@ fun RepairEntryDialog(
 ) {
     var deviceType by remember { mutableStateOf(log?.deviceType ?: "") }
     var brand by remember { mutableStateOf(log?.brand ?: "") }
+    var location by remember { mutableStateOf(log?.location ?: "") }
     var issue by remember { mutableStateOf(log?.issue ?: "") }
     var diagnosis by remember { mutableStateOf(log?.diagnosis ?: "") }
     var actionTaken by remember { mutableStateOf(log?.actionTaken ?: "") }
@@ -140,7 +154,7 @@ fun RepairEntryDialog(
                 .padding(1.dp)
                 .background(Color(0xFF001F54).copy(alpha = 0.9f), RoundedCornerShape(28.dp))
         ) {
-            Column(Modifier.padding(24.dp)) {
+            Column(Modifier.padding(24.dp).verticalScroll(rememberScrollState())) {
                 Text(
                     text = if (log == null) "NEW REPAIR ENTRY" else "UPDATE REPAIR",
                     color = Color.Cyan,
@@ -153,6 +167,8 @@ fun RepairEntryDialog(
                 FieldInput(deviceType, { deviceType = it }, "Device Type")
                 Spacer(Modifier.height(8.dp))
                 FieldInput(brand, { brand = it }, "Brand")
+                Spacer(Modifier.height(8.dp))
+                FieldInput(location, { location = it }, "Location / Office")
                 Spacer(Modifier.height(8.dp))
                 FieldInput(issue, { issue = it }, "Issue")
                 Spacer(Modifier.height(8.dp))
@@ -187,13 +203,14 @@ fun RepairEntryDialog(
                             onSave(log?.copy(
                                 deviceType = deviceType,
                                 brand = brand,
+                                location = location,
                                 issue = issue,
                                 diagnosis = diagnosis,
                                 actionTaken = actionTaken,
                                 status = status
                             ) ?: RepairLog(
                                 date = System.currentTimeMillis(),
-                                location = "On-site",
+                                location = location.ifEmpty { "On-site" },
                                 deviceType = deviceType,
                                 brand = brand,
                                 issue = issue,
@@ -232,6 +249,12 @@ fun RepairLogCard(log: RepairLog, onEdit: () -> Unit) {
             }
             Text("${log.brand} - ${log.modelNumber}", color = Color.White, fontSize = 14.sp)
             
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
+                Icon(Icons.Default.Business, null, tint = Color.White.copy(0.4f), modifier = Modifier.size(12.dp))
+                Spacer(Modifier.width(4.dp))
+                Text(log.location, color = Color.White.copy(0.6f), fontSize = 11.sp)
+            }
+
             HorizontalDivider(Modifier.padding(vertical = 12.dp), color = Color.White.copy(0.1f))
             
             DetailRow("Issue", log.issue)
