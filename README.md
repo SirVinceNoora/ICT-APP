@@ -246,7 +246,7 @@ The long-term goal is to evolve ICT Field Ops into a **complete mobile toolkit f
 </p>
 <h1 align="center">SCAN TO DOWNLOAD THE APP</h1>
 <p align="center">
-  <img src="assets/qr.png" alt="ICT Field Ops Banner" width="100%" />
+  <img src="assets/v23(Demo).png" alt="ICT Field Ops Banner" width="100%" />
 </p>
 ---
 
