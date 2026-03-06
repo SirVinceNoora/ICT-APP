@@ -108,7 +108,7 @@ This is particularly useful when diagnosing **weak signals or unstable connectio
 
 ---
 
-### 🌐 IP Calculator
+### 🌐 IP Calculator (Still in development)
 
 The built-in IP calculator allows quick networking calculations such as:
 
